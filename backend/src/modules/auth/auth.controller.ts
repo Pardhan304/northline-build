@@ -11,7 +11,7 @@ function getSessionCookieOptions(expires?: Date) {
   return {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax' as const,
+    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
     expires,
   };
@@ -22,7 +22,7 @@ function getCsrfCookieOptions() {
   return {
     httpOnly: false,
     secure: isProd,
-    sameSite: 'lax' as const,
+    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
     path: '/',
     maxAge: 24 * 60 * 60 * 1000,
   };
@@ -66,7 +66,11 @@ export async function logout(req: Request, res: Response): Promise<void> {
   }
 
   res.clearCookie(env.COOKIE_NAME, getSessionCookieOptions());
-  res.clearCookie(CSRF_COOKIE_NAME, { path: '/' });
+  res.clearCookie(CSRF_COOKIE_NAME, {
+    path: '/',
+    secure: env.NODE_ENV === 'production',
+    sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax',
+  });
 
   sendSuccess(res, {
     message: 'Logged out successfully.',
