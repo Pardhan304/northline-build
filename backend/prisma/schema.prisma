@@ -1,0 +1,253 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+enum PublishStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum MediaRole {
+  COVER
+  GALLERY
+}
+
+enum EnquiryStatus {
+  NEW
+  IN_PROGRESS
+  RESPONDED
+  CLOSED
+}
+
+enum SectionType {
+  HERO
+  RICH_TEXT
+  IMAGE_TEXT
+  PROJECT_GRID
+  SERVICES_GRID
+  CTA
+  STATISTICS
+  GALLERY
+}
+
+model User {
+  id           String    @id @default(uuid()) @db.Uuid
+  name         String
+  email        String    @unique
+  passwordHash String
+  role         Role      @default(EDITOR)
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime? @db.Timestamptz
+  createdAt    DateTime  @default(now()) @db.Timestamptz
+  updatedAt    DateTime  @updatedAt @db.Timestamptz
+
+  createdProjects   Project[]     @relation("ProjectCreatedBy")
+  updatedProjects   Project[]     @relation("ProjectUpdatedBy")
+  uploadedMedia     Media[]       @relation("MediaUploadedBy")
+  assignedEnquiries Enquiry[]     @relation("EnquiryAssignedTo")
+  updatedSettings   SiteSetting[] @relation("SettingUpdatedBy")
+  auditLogs         AuditLog[]    @relation("AuditActor")
+  sessions          Session[]
+
+  @@map("users")
+}
+
+model Project {
+  id             String        @id @default(uuid()) @db.Uuid
+  title          String
+  slug           String        @unique
+  excerpt        String
+  description    String
+  category       String
+  location       String?
+  area           String?
+  clientName     String?
+  completionDate DateTime?     @db.Timestamptz
+  status         PublishStatus @default(DRAFT)
+  isFeatured     Boolean       @default(false)
+  sortOrder      Int           @default(0)
+  publishedAt    DateTime?     @db.Timestamptz
+  seoTitle       String?
+  seoDescription String?
+  createdById    String        @db.Uuid
+  updatedById    String        @db.Uuid
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+  deletedAt      DateTime?     @db.Timestamptz
+
+  createdBy User           @relation("ProjectCreatedBy", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User           @relation("ProjectUpdatedBy", fields: [updatedById], references: [id], onDelete: Restrict)
+  media     ProjectMedia[]
+
+  @@index([status, publishedAt(sort: Desc)])
+  @@index([isFeatured, sortOrder])
+  @@map("projects")
+}
+
+model Page {
+  id             String        @id @default(uuid()) @db.Uuid
+  slug           String        @unique
+  title          String
+  status         PublishStatus @default(DRAFT)
+  seoTitle       String?
+  seoDescription String?
+  publishedAt    DateTime?     @db.Timestamptz
+  createdAt      DateTime      @default(now()) @db.Timestamptz
+  updatedAt      DateTime      @updatedAt @db.Timestamptz
+
+  sections PageSection[]
+
+  @@map("pages")
+}
+
+model PageSection {
+  id         String      @id @default(uuid()) @db.Uuid
+  pageId     String      @db.Uuid
+  sectionKey String
+  type       SectionType
+  content    Json
+  sortOrder  Int         @default(0)
+  isVisible  Boolean     @default(true)
+  createdAt  DateTime    @default(now()) @db.Timestamptz
+  updatedAt  DateTime    @updatedAt @db.Timestamptz
+
+  page Page @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, sectionKey])
+  @@index([pageId, sortOrder])
+  @@map("page_sections")
+}
+
+model Service {
+  id          String        @id @default(uuid()) @db.Uuid
+  title       String
+  slug        String        @unique
+  summary     String
+  description String
+  status      PublishStatus @default(DRAFT)
+  sortOrder   Int           @default(0)
+  iconKey     String?
+  createdAt   DateTime      @default(now()) @db.Timestamptz
+  updatedAt   DateTime      @updatedAt @db.Timestamptz
+
+  @@index([status, sortOrder])
+  @@map("services")
+}
+
+model Media {
+  id              String    @id @default(uuid()) @db.Uuid
+  originalName    String
+  mimeType        String
+  sizeBytes       Int
+  width           Int?
+  height          Int?
+  altText         String    @default("")
+  storageProvider String
+  storageKey      String    @unique
+  publicUrl       String?
+  variants        Json?
+  uploadedById    String    @db.Uuid
+  createdAt       DateTime  @default(now()) @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @db.Timestamptz
+  deletedAt       DateTime? @db.Timestamptz
+
+  uploadedBy User           @relation("MediaUploadedBy", fields: [uploadedById], references: [id], onDelete: Restrict)
+  projects   ProjectMedia[]
+
+  @@index([createdAt(sort: Desc)])
+  @@map("media")
+}
+
+model ProjectMedia {
+  projectId String    @db.Uuid
+  mediaId   String    @db.Uuid
+  role      MediaRole @default(GALLERY)
+  sortOrder Int       @default(0)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  media   Media   @relation(fields: [mediaId], references: [id], onDelete: Restrict)
+
+  @@id([projectId, mediaId])
+  @@map("project_media")
+}
+
+model Enquiry {
+  id           String        @id @default(uuid()) @db.Uuid
+  name            String
+  email           String
+  phone           String?
+  company         String?
+  subject         String?
+  projectType     String?
+  projectLocation String?
+  projectArea     String?
+  expectedStart   String?
+  message         String
+  status       EnquiryStatus @default(NEW)
+  adminNotes   String?
+  assignedToId String?       @db.Uuid
+  createdAt    DateTime      @default(now()) @db.Timestamptz
+  updatedAt    DateTime      @updatedAt @db.Timestamptz
+
+  assignedTo User? @relation("EnquiryAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  @@index([status, createdAt(sort: Desc)])
+  @@map("enquiries")
+}
+
+model SiteSetting {
+  id          String   @id @default(uuid()) @db.Uuid
+  key         String   @unique
+  value       Json
+  updatedById String?  @db.Uuid
+  createdAt   DateTime @default(now()) @db.Timestamptz
+  updatedAt   DateTime @updatedAt @db.Timestamptz
+
+  updatedBy User? @relation("SettingUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+
+  @@map("site_settings")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @db.Uuid
+  action      String
+  entityType  String
+  entityId    String
+  metadata    Json
+  ipAddress   String?
+  userAgent   String?
+  createdAt   DateTime @default(now()) @db.Timestamptz
+
+  actor User? @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([entityType, entityId, createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
+model Session {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  tokenHash String    @unique
+  expiresAt DateTime  @db.Timestamptz
+  revokedAt DateTime? @db.Timestamptz
+  createdAt DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
