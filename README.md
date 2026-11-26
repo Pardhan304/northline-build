@@ -5,14 +5,14 @@ A full-stack construction, engineering, and project delivery website paired with
 - **Frontend:** Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4, TanStack Query, React Hook Form + Zod, GSAP (`ScrollTrigger`), Lenis smooth scroll, and custom magnetic/roll-up UI interactions.
 - **Backend:** Express 5, TypeScript, Prisma ORM, PostgreSQL (Neon), Argon2 password hashing, cookie-based sessions with CSRF protection, Sharp image processing, and Zod request validation.
 
-## Live Links (Render)
+## Live Links
 
-- **Public Website:** https://northline-build-1.onrender.com
-- **Admin Panel:** https://northline-build-1.onrender.com/admin/login
-- **Backend API Health Check:** https://northline-build.onrender.com/api/v1/health
+- **Public Website (Vercel):** https://northline-build-rosy.vercel.app
+- **Admin Panel (Vercel):** https://northline-build-rosy.vercel.app/admin/login
+- **Backend API Health Check (Render):** https://northline-build.onrender.com/api/v1/health
 - **Database:** Neon PostgreSQL
 
-> **Note:** Both services run on Render's free tier; initial requests after inactivity may take ~30–60 seconds to wake if the instance has spun down.
+> **Note:** The backend runs on Render's free tier (with a 10-minute keep-alive scheduler); if the backend has spun down, the first API request may take ~30–60 seconds to wake.
 
 ---
 
